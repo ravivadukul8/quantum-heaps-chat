@@ -13,6 +13,6 @@ export interface User {
   avatarUrl: string;
   status: UserStatus;
   customBio?: string;
-  lastSeen?: string; // ISO 8601 timestamp string
+  lastSeen?: string;
   createdAt: string;
 }

@@ -1,0 +1,123 @@
+import { createSelector } from '@reduxjs/toolkit';
+import type { Conversation, ConversationFilter } from '../../types';
+import { isGroupConversation } from '../../types';
+import type { ConversationsState } from './conversationsSlice';
+import type { UsersState } from '../auth/usersSlice';
+
+interface HasChatState {
+  conversations: ConversationsState;
+  users: UsersState;
+}
+
+export const selectConversationsState = (state: HasChatState) => state.conversations;
+
+export const selectConversationsEntities = (state: HasChatState) => state.conversations.entities;
+
+export const selectConversationsIds = (state: HasChatState) => state.conversations.ids;
+
+export const selectActiveConversationId = (state: HasChatState) =>
+  state.conversations.activeConversationId;
+
+export const selectConversationFilter = (state: HasChatState): ConversationFilter =>
+  state.conversations.filter;
+
+export const selectConversationSearchQuery = (state: HasChatState): string =>
+  state.conversations.searchQuery;
+
+export const selectConversationsLoading = (state: HasChatState): boolean =>
+  state.conversations.loading;
+
+export const selectConversationsError = (state: HasChatState): string | null =>
+  state.conversations.error;
+
+/**
+ * Returns all conversations sorted: pinned chats first, then newest updatedAt.
+ */
+export const selectAllConversations = createSelector(
+  [selectConversationsEntities, selectConversationsIds],
+  (entities, ids): Conversation[] => {
+    return ids
+      .map(id => entities[id])
+      .filter((c): c is Conversation => Boolean(c))
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  }
+);
+
+/**
+ * Returns the currently active Conversation object.
+ */
+export const selectActiveConversation = createSelector(
+  [selectConversationsEntities, selectActiveConversationId],
+  (entities, activeId): Conversation | null => {
+    if (!activeId) return null;
+    return entities[activeId] ?? null;
+  }
+);
+
+/**
+ * Returns filtered conversations matching the current filter tab and search query.
+ */
+export const selectFilteredConversations = createSelector(
+  [
+    selectAllConversations,
+    selectConversationFilter,
+    selectConversationSearchQuery,
+    (state: HasChatState) => state.users.entities,
+  ],
+  (conversations, filter, searchQuery, usersEntities): Conversation[] => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return conversations.filter(conv => {
+      // 1. Tab category filter
+      if (filter === 'unread' && conv.unreadCount === 0) {
+        return false;
+      }
+      if (filter === 'groups' && conv.type !== 'group') {
+        return false;
+      }
+
+      // 2. Search query matching
+      if (!query) {
+        return true;
+      }
+
+      if (isGroupConversation(conv)) {
+        const matchesName = conv.name.toLowerCase().includes(query);
+        const matchesDesc = conv.description?.toLowerCase().includes(query);
+        const matchesLastMsg = conv.lastMessage?.content.toLowerCase().includes(query);
+        return Boolean(matchesName || matchesDesc || matchesLastMsg);
+      }
+
+      // Direct chat: search by partner's name, email, or last message
+      const otherUserId = conv.participantIds.find(id => id !== 'user-1') ?? conv.participantIds[0];
+      const otherUser = otherUserId ? usersEntities[otherUserId] : undefined;
+      const matchesPartnerName = otherUser?.name.toLowerCase().includes(query);
+      const matchesPartnerEmail = otherUser?.email.toLowerCase().includes(query);
+      const matchesLastMsg = conv.lastMessage?.content.toLowerCase().includes(query);
+
+      return Boolean(matchesPartnerName || matchesPartnerEmail || matchesLastMsg);
+    });
+  }
+);
+
+/**
+ * Computes total unread count across all conversations for badges.
+ */
+export const selectTotalUnreadCount = createSelector(
+  [selectAllConversations],
+  (conversations): number => {
+    return conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+  }
+);
+
+/**
+ * Factory selector for single conversation.
+ */
+export const selectConversationById =
+  (conversationId: string) =>
+  (state: HasChatState): Conversation | undefined =>
+    state.conversations.entities[conversationId];
