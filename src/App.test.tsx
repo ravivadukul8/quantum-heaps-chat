@@ -50,14 +50,14 @@ describe('Chat Sidebar & Application Integration', () => {
 
   it('filters conversations by Groups tab', () => {
     renderApp();
-    const groupsTab = screen.getByRole('button', { name: /^Groups/i });
+    const groupsTab = screen.getByRole('tab', { name: /^Groups/i });
     fireEvent.click(groupsTab);
 
     expect(screen.getByText('#frontend-guild')).toBeInTheDocument();
     expect(screen.getByText('Quantum Core Team')).toBeInTheDocument();
 
     // Reset to All
-    const allTab = screen.getByRole('button', { name: /^All/i });
+    const allTab = screen.getByRole('tab', { name: /^All/i });
     fireEvent.click(allTab);
   });
 });
