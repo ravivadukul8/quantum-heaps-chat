@@ -85,6 +85,7 @@ export const conversationsSlice = createSlice({
         conv.lastMessage = action.payload;
         conv.updatedAt = action.payload.timestamp;
 
+        // If message is from someone else and this conversation is NOT currently active, increment unread
         if (
           action.payload.senderId !== 'user-1' &&
           state.activeConversationId !== conversationId
@@ -92,6 +93,7 @@ export const conversationsSlice = createSlice({
           conv.unreadCount += 1;
         }
 
+        // Reorder ids: move this conversation to the top
         state.ids = [conversationId, ...state.ids.filter(id => id !== conversationId)];
         storageService.saveConversations(Object.values(state.entities));
       }
@@ -224,5 +226,7 @@ export const {
   addGroupMember,
   removeGroupMember,
 } = conversationsSlice.actions;
+
+export * from './conversationsSelectors';
 
 export default conversationsSlice.reducer;

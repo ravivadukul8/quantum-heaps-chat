@@ -280,4 +280,6 @@ export const {
   optimisticToggleReaction,
 } = messagesSlice.actions;
 
+export * from './messagesSelectors';
+
 export default messagesSlice.reducer;

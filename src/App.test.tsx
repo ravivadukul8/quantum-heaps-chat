@@ -1,10 +1,51 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { store } from './store';
 import App from './App';
 
-describe('App Scaffolding Test', () => {
-  it('renders the application headline', () => {
-    render(<App />);
-    expect(screen.getByText(/Quantum Heaps Chat/i)).toBeInTheDocument();
+describe('Chat Sidebar & Application Integration', () => {
+  const renderApp = () =>
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    );
+
+  it('renders current user profile in the sidebar header', () => {
+    renderApp();
+    expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
+  });
+
+  it('displays conversations in the list with names and unread counts', () => {
+    renderApp();
+    expect(screen.getAllByText('Sarah Chen').length).toBeGreaterThan(0);
+    expect(screen.getByText('#frontend-guild')).toBeInTheDocument();
+    expect(screen.getByText('Quantum Core Team')).toBeInTheDocument();
+  });
+
+  it('filters conversation list when typing in search input', () => {
+    renderApp();
+    const searchInput = screen.getByPlaceholderText(/Search conversations/i);
+    fireEvent.change(searchInput, { target: { value: 'Sarah' } });
+
+    expect(screen.getAllByText('Sarah Chen').length).toBeGreaterThan(0);
+    expect(screen.queryByText('#frontend-guild')).not.toBeInTheDocument();
+
+    // Clear search
+    fireEvent.change(searchInput, { target: { value: '' } });
+  });
+
+  it('filters conversations by Groups tab', () => {
+    renderApp();
+    const groupsTab = screen.getByRole('button', { name: /^Groups/i });
+    fireEvent.click(groupsTab);
+
+    expect(screen.getByText('#frontend-guild')).toBeInTheDocument();
+    expect(screen.getByText('Quantum Core Team')).toBeInTheDocument();
+
+    // Reset to All
+    const allTab = screen.getByRole('button', { name: /^All/i });
+    fireEvent.click(allTab);
   });
 });
