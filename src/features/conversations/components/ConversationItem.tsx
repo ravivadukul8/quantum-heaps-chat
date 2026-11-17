@@ -57,6 +57,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(
     return (
       <div
         role="button"
+        aria-selected={isActive}
         tabIndex={0}
         onClick={() => onClick(conversation.id)}
         onKeyDown={e => {

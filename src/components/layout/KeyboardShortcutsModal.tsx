@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { X, Command, Keyboard } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -44,28 +44,6 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
 export const KeyboardShortcutsModal: React.FC = () => {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector(selectIsKeyboardShortcutsModalOpen);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // If typing in input, textarea, or contentEditable, ignore shortcut trigger
-      const target = e.target as HTMLElement | null;
-      const isInput =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.isContentEditable;
-
-      if (e.key === '?' && !isInput && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        dispatch(toggleKeyboardShortcutsModal(true));
-      } else if (e.key === 'Escape' && isOpen) {
-        e.preventDefault();
-        dispatch(toggleKeyboardShortcutsModal(false));
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch, isOpen]);
 
   if (!isOpen) return null;
 

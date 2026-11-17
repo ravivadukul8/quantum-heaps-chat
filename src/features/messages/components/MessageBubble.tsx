@@ -65,6 +65,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const editInputRef = useRef<HTMLTextAreaElement>(null);
 
+    // Keep edit content synchronized with incoming message prop updates when not editing
+    useEffect(() => {
+      if (!isEditing) {
+        setEditContent(message.content);
+      }
+    }, [message.content, isEditing]);
+
     // Auto-focus and select text when entering edit mode
     useEffect(() => {
       if (isEditing) {

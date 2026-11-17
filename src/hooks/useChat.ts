@@ -163,7 +163,7 @@ export function useChat() {
           // Append received message into message feed
           dispatch(messageReceived(incomingMessage));
           // Update conversation in sidebar (updates last message, timestamp, unread count)
-          dispatch(updateLastMessage(incomingMessage));
+          dispatch(updateLastMessage({ message: incomingMessage, currentUserId: user.id }));
         }
       );
       cleanupFnsRef.current.push(cancelAutoReply);

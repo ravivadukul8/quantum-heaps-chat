@@ -24,9 +24,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Focus cancel button on mount for safe keyboard focus
+    cancelButtonRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -79,6 +83,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
         <div className="flex items-center justify-end gap-2 mt-5">
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"

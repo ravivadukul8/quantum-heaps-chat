@@ -62,6 +62,7 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   const dateGroups = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   const activeConvId = activeConversation?.id;
+  const currentUserId = currentUser?.id;
 
   const handleEditMessage = useCallback(
     (messageId: string, newContent: string) => {
@@ -90,6 +91,48 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
     [dispatch, activeConvId]
   );
 
+  // Handle Reply trigger
+  const handleReply = useCallback(
+    (message: Message) => {
+      const sender = usersEntities[message.senderId];
+      dispatch(
+        setReplyingTo({
+          messageId: message.id,
+          senderId: message.senderId,
+          senderName: message.senderId === currentUserId ? 'You' : sender?.name ?? 'Unknown',
+          content: message.content,
+        })
+      );
+    },
+    [dispatch, usersEntities, currentUserId]
+  );
+
+  // Handle Reaction Click
+  const handleReactionClick = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!activeConvId || !currentUserId) return;
+      // 1. Instant optimistic update
+      dispatch(
+        optimisticToggleReaction({
+          conversationId: activeConvId,
+          messageId,
+          emoji,
+          userId: currentUserId,
+        })
+      );
+      // 2. Background service sync
+      dispatch(
+        toggleReactionThunk({
+          conversationId: activeConvId,
+          messageId,
+          emoji,
+          userId: currentUserId,
+        })
+      );
+    },
+    [dispatch, activeConvId, currentUserId]
+  );
+
   if (!activeConversation || !currentUser) {
     return null;
   }
@@ -112,41 +155,6 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   }
 
   const isGroup = isGroupConversation(activeConversation);
-
-  // Handle Reply trigger
-  const handleReply = (message: Message) => {
-    const sender = usersEntities[message.senderId];
-    dispatch(
-      setReplyingTo({
-        messageId: message.id,
-        senderId: message.senderId,
-        senderName: message.senderId === currentUser.id ? 'You' : sender?.name ?? 'Unknown',
-        content: message.content,
-      })
-    );
-  };
-
-  // Handle Reaction Click
-  const handleReactionClick = (messageId: string, emoji: string) => {
-    // 1. Instant optimistic update
-    dispatch(
-      optimisticToggleReaction({
-        conversationId: activeConversation.id,
-        messageId,
-        emoji,
-        userId: currentUser.id,
-      })
-    );
-    // 2. Background service sync
-    dispatch(
-      toggleReactionThunk({
-        conversationId: activeConversation.id,
-        messageId,
-        emoji,
-        userId: currentUser.id,
-      })
-    );
-  };
 
   // Empty conversation thread state
   if (messages.length === 0) {

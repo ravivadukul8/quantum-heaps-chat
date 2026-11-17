@@ -20,7 +20,7 @@ export const Notification: React.FC<NotificationProps> = ({
     }, notification.duration ?? 3000);
 
     return () => clearTimeout(timer);
-  }, [notification, onDismiss]);
+  }, [notification.id, notification.duration, onDismiss]);
 
   const getIcon = () => {
     switch (notification.type) {

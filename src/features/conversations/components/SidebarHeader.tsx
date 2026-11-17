@@ -52,6 +52,8 @@ export const SidebarHeader: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsStatusMenuOpen(prev => !prev)}
+          aria-haspopup="menu"
+          aria-expanded={isStatusMenuOpen}
           className="flex items-center gap-3 p-1 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-left group"
           title="Change your online status"
         >
@@ -81,13 +83,18 @@ export const SidebarHeader: React.FC = () => {
 
         {/* Status Dropdown Popover */}
         {isStatusMenuOpen && (
-          <div className="absolute top-full left-0 mt-1.5 w-48 bg-white dark:bg-[#202c33] rounded-xl shadow-xl border border-gray-100 dark:border-gray-700/60 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+          <div
+            role="menu"
+            aria-label="Set online status"
+            className="absolute top-full left-0 mt-1.5 w-48 bg-white dark:bg-[#202c33] rounded-xl shadow-xl border border-gray-100 dark:border-gray-700/60 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
+          >
             <div className="px-3 py-1.5 font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-[10px]">
               Set Online Status
             </div>
 
             <button
               type="button"
+              role="menuitem"
               onClick={() => handleStatusChange('online')}
               className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-200"
             >
@@ -100,6 +107,7 @@ export const SidebarHeader: React.FC = () => {
 
             <button
               type="button"
+              role="menuitem"
               onClick={() => handleStatusChange('away')}
               className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-200"
             >
@@ -112,6 +120,7 @@ export const SidebarHeader: React.FC = () => {
 
             <button
               type="button"
+              role="menuitem"
               onClick={() => handleStatusChange('offline')}
               className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-200"
             >

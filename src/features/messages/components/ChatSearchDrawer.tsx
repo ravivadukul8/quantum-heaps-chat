@@ -21,6 +21,16 @@ export const ChatSearchDrawer: React.FC = () => {
   const [query, setQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up any pending highlight timer on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,9 +59,13 @@ export const ChatSearchDrawer: React.FC = () => {
     const element = document.getElementById(`msg-${messageId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Clear any existing highlight timer
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
       // Apply temporary highlight flash
       element.classList.add('ring-2', 'ring-teal-500', 'bg-teal-50/30', 'dark:bg-teal-950/40', 'rounded-xl');
-      setTimeout(() => {
+      highlightTimerRef.current = setTimeout(() => {
         element.classList.remove('ring-2', 'ring-teal-500', 'bg-teal-50/30', 'dark:bg-teal-950/40', 'rounded-xl');
       }, 2000);
     }

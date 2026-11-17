@@ -45,22 +45,13 @@ export function useConversationSearch(debounceDelayMs = 250) {
     inputRef.current?.focus();
   }, [dispatch]);
 
-  // Keyboard shortcut listener: Ctrl+K or / to focus search, Esc to clear
+  // Keyboard shortcut listener: Ctrl+K to focus search, Esc to clear
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isInputFocused =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.isContentEditable;
-
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
         inputRef.current?.select();
-      } else if (e.key === '/' && !isInputFocused) {
-        e.preventDefault();
-        inputRef.current?.focus();
       } else if (e.key === 'Escape' && document.activeElement === inputRef.current) {
         e.preventDefault();
         handleClear();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Smile,
   CornerUpLeft,
@@ -42,6 +42,34 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  // Clean up copy timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Dismiss open emoji menus on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        setShowQuickMenu(false);
+        setShowFullPicker(false);
+      }
+    };
+
+    if (showQuickMenu || showFullPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showQuickMenu, showFullPicker]);
 
   if (isDeleted) return null;
 
@@ -63,7 +91,12 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
       }
 
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = setTimeout(() => {
+        setCopied(false);
+      }, 2000);
       dispatch(showToast({ message: 'Message copied to clipboard', type: 'success' }));
     } catch {
       dispatch(showToast({ message: 'Failed to copy message to clipboard', type: 'error' }));
@@ -78,6 +111,7 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
 
   return (
     <div
+      ref={toolbarRef}
       className={cn(
         'relative inline-flex items-center gap-0.5 p-1 rounded-full bg-white dark:bg-[#202c33] shadow-md border border-gray-200 dark:border-gray-700 select-none transition-all',
         className

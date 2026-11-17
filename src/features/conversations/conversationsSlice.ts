@@ -84,19 +84,26 @@ export const conversationsSlice = createSlice({
         storageService.saveConversations(Object.values(state.entities));
       }
     },
-    updateLastMessage: (state, action: PayloadAction<Message>) => {
-      const { conversationId } = action.payload;
+    updateLastMessage: (
+      state,
+      action: PayloadAction<Message | { message: Message; currentUserId?: string }>
+    ) => {
+      const message = 'message' in action.payload ? action.payload.message : action.payload;
+      const currentUserId =
+        'currentUserId' in action.payload ? action.payload.currentUserId : undefined;
+      const { conversationId } = message;
       const conv = state.entities[conversationId];
 
       if (conv) {
-        conv.lastMessage = action.payload;
-        conv.updatedAt = action.payload.timestamp;
+        conv.lastMessage = message;
+        conv.updatedAt = message.timestamp;
 
         // If message is from someone else and this conversation is NOT currently active, increment unread
-        if (
-          action.payload.senderId !== 'user-1' &&
-          state.activeConversationId !== conversationId
-        ) {
+        const isFromOther = currentUserId
+          ? message.senderId !== currentUserId
+          : message.senderId !== 'user-1';
+
+        if (isFromOther && state.activeConversationId !== conversationId) {
           conv.unreadCount += 1;
         }
 

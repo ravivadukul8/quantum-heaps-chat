@@ -70,8 +70,9 @@ export const selectFilteredConversations = createSelector(
     selectConversationFilter,
     selectConversationSearchQuery,
     (state: HasChatState) => state.users.entities,
+    (state: HasChatState) => state.users.currentUserId,
   ],
-  (conversations, filter, searchQuery, usersEntities): Conversation[] => {
+  (conversations, filter, searchQuery, usersEntities, currentUserId): Conversation[] => {
     const query = searchQuery.trim().toLowerCase();
 
     return conversations.filter(conv => {
@@ -97,7 +98,7 @@ export const selectFilteredConversations = createSelector(
       }
 
       // Direct chat: search by username or last message
-      const otherUserId = conv.participantIds.find(id => id !== 'user-1') ?? conv.participantIds[0];
+      const otherUserId = conv.participantIds.find(id => id !== currentUserId) ?? conv.participantIds[0];
       const otherUser = otherUserId ? usersEntities[otherUserId] : undefined;
       const matchesUserName = otherUser?.name.toLowerCase().includes(query);
 
