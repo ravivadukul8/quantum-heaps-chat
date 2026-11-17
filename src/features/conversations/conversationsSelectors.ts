@@ -59,7 +59,10 @@ export const selectActiveConversation = createSelector(
 );
 
 /**
- * Returns filtered conversations matching the current filter tab and search query.
+ * Returns filtered conversations matching the current filter tab and case-insensitive search query.
+ * Matches:
+ * - Direct conversations: by partner's username or last message content
+ * - Group conversations: by group name or last message content
  */
 export const selectFilteredConversations = createSelector(
   [
@@ -85,21 +88,20 @@ export const selectFilteredConversations = createSelector(
         return true;
       }
 
-      if (isGroupConversation(conv)) {
-        const matchesName = conv.name.toLowerCase().includes(query);
-        const matchesDesc = conv.description?.toLowerCase().includes(query);
-        const matchesLastMsg = conv.lastMessage?.content.toLowerCase().includes(query);
-        return Boolean(matchesName || matchesDesc || matchesLastMsg);
-      }
-
-      // Direct chat: search by partner's name, email, or last message
-      const otherUserId = conv.participantIds.find(id => id !== 'user-1') ?? conv.participantIds[0];
-      const otherUser = otherUserId ? usersEntities[otherUserId] : undefined;
-      const matchesPartnerName = otherUser?.name.toLowerCase().includes(query);
-      const matchesPartnerEmail = otherUser?.email.toLowerCase().includes(query);
       const matchesLastMsg = conv.lastMessage?.content.toLowerCase().includes(query);
 
-      return Boolean(matchesPartnerName || matchesPartnerEmail || matchesLastMsg);
+      if (isGroupConversation(conv)) {
+        const matchesGroupName = conv.name.toLowerCase().includes(query);
+        const matchesDesc = conv.description?.toLowerCase().includes(query);
+        return Boolean(matchesGroupName || matchesDesc || matchesLastMsg);
+      }
+
+      // Direct chat: search by username or last message
+      const otherUserId = conv.participantIds.find(id => id !== 'user-1') ?? conv.participantIds[0];
+      const otherUser = otherUserId ? usersEntities[otherUserId] : undefined;
+      const matchesUserName = otherUser?.name.toLowerCase().includes(query);
+
+      return Boolean(matchesUserName || matchesLastMsg);
     });
   }
 );

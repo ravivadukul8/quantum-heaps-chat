@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App';
@@ -24,16 +24,28 @@ describe('Chat Sidebar & Application Integration', () => {
     expect(screen.getByText('Quantum Core Team')).toBeInTheDocument();
   });
 
-  it('filters conversation list when typing in search input', () => {
+  it('filters conversation list when typing in search input', async () => {
     renderApp();
     const searchInput = screen.getByPlaceholderText(/Search conversations/i);
     fireEvent.change(searchInput, { target: { value: 'Sarah' } });
 
-    expect(screen.getAllByText('Sarah Chen').length).toBeGreaterThan(0);
-    expect(screen.queryByText('#frontend-guild')).not.toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getAllByText('Sarah Chen').length).toBeGreaterThan(0);
+        expect(screen.queryByText('#frontend-guild')).not.toBeInTheDocument();
+      },
+      { timeout: 1500 }
+    );
 
     // Clear search
     fireEvent.change(searchInput, { target: { value: '' } });
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('#frontend-guild')).toBeInTheDocument();
+      },
+      { timeout: 1500 }
+    );
   });
 
   it('filters conversations by Groups tab', () => {
