@@ -12,6 +12,7 @@ import { CreateGroupModal } from '../../features/groups/components/CreateGroupMo
 import { AddMemberModal } from '../../features/groups/components/AddMemberModal';
 import { UserProfileModal } from '../../features/auth/components/UserProfileModal';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
+import { Toast } from '../common/Toast';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '../../utils/classNames';
 
@@ -71,11 +72,12 @@ export const AppLayout: React.FC = () => {
         <GroupInfoDrawer />
       </div>
 
-      {/* Global Modals */}
+      {/* Global Modals & Notifications */}
       <CreateGroupModal />
       <AddMemberModal />
       <UserProfileModal />
       <KeyboardShortcutsModal />
+      <Toast />
     </div>
   );
 };

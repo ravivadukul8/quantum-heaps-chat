@@ -6,15 +6,20 @@ import {
   Check,
   Pencil,
   Trash2,
+  Plus,
 } from 'lucide-react';
+import { useAppDispatch } from '../../../store/hooks';
+import { showToast } from '../../settings/uiSlice';
+import { EmojiPicker } from './EmojiPicker';
 import { cn } from '../../../utils/classNames';
 
 export interface MessageActionsToolbarProps {
   isMe: boolean;
   isDeleted: boolean;
+  content: string;
   onReaction: (emoji: string) => void;
   onReply: () => void;
-  onCopy: () => void;
+  onCopy?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   className?: string;
@@ -25,6 +30,7 @@ const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', 
 export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
   isMe,
   isDeleted,
+  content,
   onReaction,
   onReply,
   onCopy,
@@ -32,20 +38,42 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
   onDelete,
   className,
 }) => {
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const dispatch = useAppDispatch();
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (isDeleted) return null;
 
-  const handleCopy = () => {
-    onCopy();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (onCopy) {
+        onCopy();
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        // Fallback for environments where Clipboard API is restricted
+        const tempTextarea = document.createElement('textarea');
+        tempTextarea.value = content;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextarea);
+      }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      dispatch(showToast({ message: 'Message copied to clipboard', type: 'success' }));
+    } catch {
+      dispatch(showToast({ message: 'Failed to copy message to clipboard', type: 'error' }));
+    }
   };
 
   const handleSelectEmoji = (emoji: string) => {
     onReaction(emoji);
-    setShowEmojiPicker(false);
+    setShowQuickMenu(false);
+    setShowFullPicker(false);
   };
 
   return (
@@ -59,7 +87,10 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
       <div className="relative">
         <button
           type="button"
-          onClick={() => setShowEmojiPicker(prev => !prev)}
+          onClick={() => {
+            setShowQuickMenu(prev => !prev);
+            setShowFullPicker(false);
+          }}
           title="Add reaction"
           aria-label="Add reaction"
           className="p-1.5 rounded-full text-gray-500 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
@@ -67,8 +98,8 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
           <Smile className="w-3.5 h-3.5" />
         </button>
 
-        {/* Emoji Selection Popover */}
-        {showEmojiPicker && (
+        {/* Quick Reactions Bar Popover */}
+        {showQuickMenu && !showFullPicker && (
           <div
             className="absolute bottom-full mb-1 left-0 z-30 flex items-center gap-1 p-1.5 rounded-2xl bg-white dark:bg-[#182229] shadow-xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-100"
             role="menu"
@@ -85,6 +116,25 @@ export const MessageActionsToolbar: React.FC<MessageActionsToolbarProps> = ({
                 {emoji}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowFullPicker(true)}
+              title="More emojis"
+              aria-label="More emojis"
+              className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Expanded Full Accessible Emoji Picker */}
+        {showFullPicker && (
+          <div className="absolute bottom-full mb-1 left-0 z-40 animate-in zoom-in-95 duration-100">
+            <EmojiPicker
+              onSelectEmoji={handleSelectEmoji}
+              onClose={() => setShowFullPicker(false)}
+            />
           </div>
         )}
       </div>

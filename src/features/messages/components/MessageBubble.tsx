@@ -1,10 +1,13 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Ban, CornerUpLeft } from 'lucide-react';
+import { Ban } from 'lucide-react';
 import type { Message, User } from '../../../types';
 import { Avatar } from '../../../components/common/Avatar';
 import { MessageStatus } from '../../../components/common/MessageStatus';
 import { formatMessageTime } from '../../../utils/dateUtils';
 import { MessageActionsToolbar } from './MessageActionsToolbar';
+import { MessageReply } from './MessageReply';
+import { MessageReactions } from './MessageReactions';
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { cn } from '../../../utils/classNames';
 
 export interface MessageBubbleProps {
@@ -100,12 +103,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
       }
     };
 
-    const handleCopy = () => {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(message.content);
-      }
-    };
-
     const handleConfirmDelete = () => {
       onDeleteMessage?.(message.id);
       setShowDeleteConfirm(false);
@@ -156,15 +153,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
 
           {/* Quoted Reply Reference Banner */}
           {message.replyTo && (
-            <div className="mx-2.5 mt-2 mb-1 p-2 rounded-xl bg-black/5 dark:bg-black/20 border-l-4 border-teal-500 text-xs">
-              <div className="flex items-center gap-1 font-semibold text-teal-700 dark:text-teal-400">
-                <CornerUpLeft className="w-3 h-3" />
-                <span>{message.replyTo.senderName}</span>
-              </div>
-              <p className="text-gray-600 dark:text-gray-300 truncate mt-0.5">
-                {message.replyTo.content}
-              </p>
-            </div>
+            <MessageReply reply={message.replyTo} />
           )}
 
           {/* Main Content Area */}
@@ -215,30 +204,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
               </div>
             )}
 
-            {/* Inline Delete Confirmation Banner */}
-            {showDeleteConfirm && (
-              <div className="mt-2 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs">
-                <p className="text-rose-800 dark:text-rose-200 font-medium">
-                  Delete this message?
-                </p>
-                <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="px-2 py-0.5 rounded text-[11px] text-gray-600 dark:text-gray-400 hover:bg-rose-100 dark:hover:bg-rose-900/30"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmDelete}
-                    className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Timestamp & Delivery Indicators */}
             <div className="flex items-center justify-end gap-1 mt-1 text-[10px] select-none text-gray-500 dark:text-gray-400">
@@ -254,27 +219,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
 
           {/* Reaction Pills Bar (if reactions present) */}
           {message.reactions && message.reactions.length > 0 && !message.isDeleted && (
-            <div className="flex flex-wrap items-center gap-1 px-3 pb-2 -mt-0.5">
-              {message.reactions.map(reaction => {
-                const hasReacted = reaction.userIds.includes(currentUserId);
-                return (
-                  <button
-                    key={reaction.emoji}
-                    type="button"
-                    onClick={() => onReactionClick?.(message.id, reaction.emoji)}
-                    className={cn(
-                      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-transform active:scale-90 select-none border',
-                      hasReacted
-                        ? 'bg-teal-100 dark:bg-teal-950/60 border-teal-500/50 text-teal-800 dark:text-teal-300 font-medium'
-                        : 'bg-white/80 dark:bg-[#182229]/80 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'
-                    )}
-                  >
-                    <span>{reaction.emoji}</span>
-                    <span className="text-[10px] font-semibold">{reaction.count}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <MessageReactions
+              reactions={message.reactions}
+              currentUserId={currentUserId}
+              onReactionClick={emoji => onReactionClick?.(message.id, emoji)}
+            />
           )}
 
           {/* Floating Actions Toolbar on Hover */}
@@ -288,15 +237,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
               <MessageActionsToolbar
                 isMe={isMe}
                 isDeleted={message.isDeleted}
+                content={message.content}
                 onReaction={emoji => onReactionClick?.(message.id, emoji)}
                 onReply={() => onReply?.(message)}
-                onCopy={handleCopy}
                 onEdit={isMe ? handleStartEdit : undefined}
                 onDelete={isMe ? () => setShowDeleteConfirm(true) : undefined}
               />
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Modal Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Delete message?"
+          description="Are you sure you want to delete this message? This message will be removed for everyone in this chat."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          isDestructive
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     );
   }

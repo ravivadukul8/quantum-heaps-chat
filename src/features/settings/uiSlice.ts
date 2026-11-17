@@ -2,6 +2,13 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { ThemeMode, MobilePane } from '../../types';
 import { storageService } from '../../services/storageService';
 
+export interface ToastNotification {
+  id: string;
+  message: string;
+  type?: 'success' | 'error' | 'info';
+  duration?: number;
+}
+
 export interface UIState {
   theme: ThemeMode;
   mobilePane: MobilePane;
@@ -10,6 +17,7 @@ export interface UIState {
   isKeyboardShortcutsModalOpen: boolean;
   isUserProfileModalOpen: boolean;
   soundEnabled: boolean;
+  toast: ToastNotification | null;
 }
 
 // Hydrate initial theme from storage or system preference
@@ -37,6 +45,7 @@ const initialState: UIState = {
   isKeyboardShortcutsModalOpen: false,
   isUserProfileModalOpen: false,
   soundEnabled: true,
+  toast: null,
 };
 
 export const uiSlice = createSlice({
@@ -90,6 +99,20 @@ export const uiSlice = createSlice({
     toggleSound: state => {
       state.soundEnabled = !state.soundEnabled;
     },
+    showToast: (
+      state,
+      action: PayloadAction<{ message: string; type?: 'success' | 'error' | 'info'; duration?: number }>
+    ) => {
+      state.toast = {
+        id: `toast-${Date.now()}`,
+        message: action.payload.message,
+        type: action.payload.type ?? 'success',
+        duration: action.payload.duration ?? 2500,
+      };
+    },
+    hideToast: state => {
+      state.toast = null;
+    },
   },
 });
 
@@ -102,6 +125,8 @@ export const {
   toggleKeyboardShortcutsModal,
   toggleUserProfileModal,
   toggleSound,
+  showToast,
+  hideToast,
 } = uiSlice.actions;
 
 interface HasUIState {
@@ -117,5 +142,6 @@ export const selectIsKeyboardShortcutsModalOpen = (state: HasUIState): boolean =
 export const selectIsUserProfileModalOpen = (state: HasUIState): boolean =>
   state.ui.isUserProfileModalOpen;
 export const selectSoundEnabled = (state: HasUIState): boolean => state.ui.soundEnabled;
+export const selectToast = (state: HasUIState): ToastNotification | null => state.ui.toast;
 
 export default uiSlice.reducer;
