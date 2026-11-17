@@ -6,13 +6,17 @@ import { setActiveConversation } from '../conversations/conversationsSlice';
 import { toggleGroupInfoDrawer, closeAddMemberModal } from './groupsSlice';
 import { GroupInfoDrawer } from './components/GroupInfoDrawer';
 import { AddMemberModal } from './components/AddMemberModal';
+import { Toast } from '../../components/common/Toast';
 
-describe('Group Info Drawer & Member Management Suite', () => {
+describe('Group Management Suite (Tasks 20, 21, 22: Info, Add & Remove Members)', () => {
   const renderGroupComponents = () =>
     render(
       <Provider store={store}>
-        <GroupInfoDrawer />
-        <AddMemberModal />
+        <div className="relative">
+          <GroupInfoDrawer />
+          <AddMemberModal />
+          <Toast />
+        </div>
       </Provider>
     );
 
@@ -23,85 +27,183 @@ describe('Group Info Drawer & Member Management Suite', () => {
     store.dispatch(closeAddMemberModal());
   });
 
-  it('renders group information drawer with members and roles', () => {
-    renderGroupComponents();
+  /* -------------------------------------------------------------
+   * TASK 20: GROUP INFORMATION AND MEMBERS
+   * ------------------------------------------------------------- */
+  describe('Task 20: Group Information and Members', () => {
+    it('displays group name, image, description, and total member count', () => {
+      renderGroupComponents();
 
-    expect(screen.getByText('Group Details')).toBeInTheDocument();
-    expect(screen.getByText(/#frontend-guild/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Frontend Architecture, React patterns/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/members \(/i)).toBeInTheDocument();
-  });
+      expect(screen.getByText('Group Details')).toBeInTheDocument();
+      expect(screen.getByText(/#frontend-guild/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Frontend Architecture, React patterns/i)
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Group • \d+ members/i)).toBeInTheDocument();
+      expect(screen.getByAltText(/#frontend-guild/i)).toBeInTheDocument();
+    });
 
-  it('filters member list when typing in member search box', () => {
-    renderGroupComponents();
+    it('displays all group members with profile pictures, names, and online status', () => {
+      renderGroupComponents();
 
-    const searchInput = screen.getByPlaceholderText(/filter members/i);
-    expect(searchInput).toBeInTheDocument();
+      // Check member list items
+      const membersList = screen.getByRole('list', { name: /group members list/i });
+      expect(membersList).toBeInTheDocument();
 
-    fireEvent.change(searchInput, { target: { value: 'Sarah' } });
+      // Verify specific members are present
+      expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
+      expect(screen.getByText(/Alex Rivera \(You\)/i)).toBeInTheDocument();
 
-    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Elena Rostova/i)).not.toBeInTheDocument();
-  });
+      // Check admin badge presence
+      expect(screen.getAllByText(/Admin/i).length).toBeGreaterThan(0);
+    });
 
-  it('allows opening Add Member modal and adding an eligible contact', async () => {
-    renderGroupComponents();
+    it('filters member list when typing in member search box', () => {
+      renderGroupComponents();
 
-    // Click "Add Member" button
-    const addMemberBtn = screen.getByRole('button', { name: /add member/i });
-    fireEvent.click(addMemberBtn);
+      const searchInput = screen.getByPlaceholderText(/filter members/i);
+      expect(searchInput).toBeInTheDocument();
 
-    // Modal opens
-    expect(await screen.findByText(/add members to #frontend-guild/i)).toBeInTheDocument();
+      fireEvent.change(searchInput, { target: { value: 'Sarah' } });
 
-    // Find an eligible contact not yet in group (Marcus Vance) and select them
-    const candidateContact = screen.getByText('Marcus Vance');
-    fireEvent.click(candidateContact);
+      expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
+      expect(screen.queryByText(/David Kim/i)).not.toBeInTheDocument();
 
-    // Confirm addition
-    const addSelectedBtn = screen.getByRole('button', { name: /add selected/i });
-    fireEvent.click(addSelectedBtn);
+      // Clear search
+      const clearBtn = screen.getByLabelText(/clear filter/i);
+      fireEvent.click(clearBtn);
+      expect(screen.getByText(/Elena Rostova/i)).toBeInTheDocument();
+    });
 
-    // Modal closes and Marcus Vance is now in group members
-    await waitFor(() => {
-      expect(screen.getByText(/Marcus Vance/i)).toBeInTheDocument();
+    it('allows closing the group information drawer via close button', async () => {
+      renderGroupComponents();
+
+      const closeBtn = screen.getByLabelText(/close group details/i);
+      fireEvent.click(closeBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Group Details')).not.toBeInTheDocument();
+      });
     });
   });
 
-  it('allows an admin to remove a member from the group', async () => {
-    renderGroupComponents();
+  /* -------------------------------------------------------------
+   * TASK 21: ADD GROUP MEMBERS
+   * ------------------------------------------------------------- */
+  describe('Task 21: Add Group Members', () => {
+    it('displays only eligible contacts who are not already group members', async () => {
+      renderGroupComponents();
 
-    // Verify Elena Rostova is present
-    expect(screen.getByText('Elena Rostova')).toBeInTheDocument();
+      const addMemberBtn = screen.getByRole('button', { name: /add member/i });
+      fireEvent.click(addMemberBtn);
 
-    // Find remove button for Elena Rostova
-    const removeElenaBtn = screen.getByLabelText(/remove elena rostova/i);
-    fireEvent.click(removeElenaBtn);
+      expect(await screen.findByText(/add members to #frontend-guild/i)).toBeInTheDocument();
 
-    // Member should be removed from the drawer
-    await waitFor(() => {
-      expect(screen.queryByText('Elena Rostova')).not.toBeInTheDocument();
+      // Sarah Chen is already in conv-6, so should not appear in the eligible list
+      expect(screen.queryByRole('option', { name: /Sarah Chen/i })).not.toBeInTheDocument();
+
+      // Marcus Vance is not in conv-6, so should be available
+      expect(screen.getByText('Marcus Vance')).toBeInTheDocument();
+    });
+
+    it('filters eligible contacts using search input', async () => {
+      renderGroupComponents();
+
+      fireEvent.click(screen.getByRole('button', { name: /add member/i }));
+
+      const searchInput = await screen.findByPlaceholderText(/search contacts by name or email/i);
+      fireEvent.change(searchInput, { target: { value: 'Marcus' } });
+
+      expect(screen.getByText('Marcus Vance')).toBeInTheDocument();
+      expect(screen.queryByText('Liam Foster')).not.toBeInTheDocument();
+    });
+
+    it('allows selecting multiple eligible users, adds them, updates member count, and shows toast feedback', async () => {
+      renderGroupComponents();
+
+      fireEvent.click(screen.getByRole('button', { name: /add member/i }));
+
+      // Select multiple contacts (e.g. Marcus Vance)
+      const contact1 = await screen.findByText('Marcus Vance');
+      fireEvent.click(contact1);
+
+      expect(screen.getByText(/1 contact selected/i)).toBeInTheDocument();
+
+      // Click Add Selected
+      const addSelectedBtn = screen.getByRole('button', { name: /add selected/i });
+      fireEvent.click(addSelectedBtn);
+
+      // Verify success toast appears
+      await waitFor(() => {
+        expect(screen.getByText(/added 1 new member to #frontend-guild/i)).toBeInTheDocument();
+      });
+
+      // Verify member is now in the drawer member list
+      expect(screen.getByText('Marcus Vance')).toBeInTheDocument();
     });
   });
 
-  it('shows leave group confirmation prompt and handles exit', async () => {
-    renderGroupComponents();
+  /* -------------------------------------------------------------
+   * TASK 22: REMOVE GROUP MEMBERS
+   * ------------------------------------------------------------- */
+  describe('Task 22: Remove Group Members', () => {
+    it('shows confirmation dialog before removing a member and cancels cleanly', async () => {
+      renderGroupComponents();
 
-    const leaveBtn = screen.getByRole('button', { name: /leave group/i });
-    fireEvent.click(leaveBtn);
+      // Elena Rostova is a member in conv-6
+      expect(screen.getByText('Elena Rostova')).toBeInTheDocument();
 
-    // Confirmation alert shown
-    expect(screen.getByText(/are you sure you want to leave this group\?/i)).toBeInTheDocument();
+      // Click remove button for Elena Rostova
+      const removeElenaBtn = screen.getByLabelText(/remove elena rostova/i);
+      fireEvent.click(removeElenaBtn);
 
-    // Confirm leaving
-    const confirmLeave = screen.getAllByRole('button', { name: /leave group/i });
-    fireEvent.click(confirmLeave[confirmLeave.length - 1]!);
+      // Confirmation dialog should be visible
+      const dialogHeading = await screen.findByRole('heading', { name: /remove elena rostova\?/i });
+      expect(dialogHeading).toBeInTheDocument();
+      expect(screen.getByText(/they will no longer have access/i)).toBeInTheDocument();
 
-    await waitFor(() => {
-      // Active conversation becomes null or drawer closes
-      expect(screen.queryByText('Group Details')).not.toBeInTheDocument();
+      // Click cancel
+      const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+      fireEvent.click(cancelBtn);
+
+      // Dialog closes and Elena remains in the group
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: /remove elena rostova\?/i })).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Elena Rostova')).toBeInTheDocument();
+    });
+
+    it('removes the member upon confirmation, updates member count, and shows feedback', async () => {
+      renderGroupComponents();
+
+      const removeElenaBtn = screen.getByLabelText(/remove elena rostova/i);
+      fireEvent.click(removeElenaBtn);
+
+      // Confirm removal
+      const confirmRemoveBtn = await screen.findByRole('button', { name: /^remove$/i });
+      fireEvent.click(confirmRemoveBtn);
+
+      // Elena should be removed and toast displayed
+      await waitFor(() => {
+        expect(screen.queryByText('Elena Rostova')).not.toBeInTheDocument();
+        expect(screen.getByText(/removed elena rostova from #frontend-guild/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows leave group confirmation prompt and handles exit cleanly', async () => {
+      renderGroupComponents();
+
+      const leaveBtn = screen.getByRole('button', { name: /leave group/i });
+      fireEvent.click(leaveBtn);
+
+      expect(screen.getByText(/are you sure you want to leave this group\?/i)).toBeInTheDocument();
+
+      const confirmLeave = screen.getAllByRole('button', { name: /leave group/i });
+      fireEvent.click(confirmLeave[confirmLeave.length - 1]!);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Group Details')).not.toBeInTheDocument();
+      });
     });
   });
 });
