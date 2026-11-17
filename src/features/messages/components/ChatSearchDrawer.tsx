@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X, MessageSquare, ArrowUpRight } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { Search, X, MessageSquare, ArrowUpRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   selectIsSearchInChatOpen,
@@ -9,6 +9,7 @@ import { selectActiveMessages } from '../messagesSelectors';
 import { selectUsersEntities, selectCurrentUser } from '../../auth/usersSlice';
 import { Avatar } from '../../../components/common/Avatar';
 import { formatMessageTime, formatDate } from '../../../utils/dateUtils';
+import { cn } from '../../../utils/classNames';
 
 export const ChatSearchDrawer: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -18,6 +19,7 @@ export const ChatSearchDrawer: React.FC = () => {
   const currentUser = useAppSelector(selectCurrentUser);
 
   const [query, setQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export const ChatSearchDrawer: React.FC = () => {
       inputRef.current?.focus();
     } else {
       setQuery('');
+      setCurrentMatchIndex(0);
     }
   }, [isOpen]);
 
@@ -37,22 +40,57 @@ export const ChatSearchDrawer: React.FC = () => {
     );
   }, [messages, query]);
 
-  if (!isOpen) return null;
+  // Reset or clamp match index when matches change
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [query]);
 
-  const handleClose = () => {
-    dispatch(toggleSearchInChat(false));
-  };
-
-  const handleScrollToMessage = (messageId: string) => {
+  const handleScrollToMessage = useCallback((messageId: string) => {
     const element = document.getElementById(`msg-${messageId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       // Apply temporary highlight flash
-      element.classList.add('ring-2', 'ring-teal-500', 'bg-teal-50/20', 'dark:bg-teal-950/30', 'rounded-xl');
+      element.classList.add('ring-2', 'ring-teal-500', 'bg-teal-50/30', 'dark:bg-teal-950/40', 'rounded-xl');
       setTimeout(() => {
-        element.classList.remove('ring-2', 'ring-teal-500', 'bg-teal-50/20', 'dark:bg-teal-950/30', 'rounded-xl');
+        element.classList.remove('ring-2', 'ring-teal-500', 'bg-teal-50/30', 'dark:bg-teal-950/40', 'rounded-xl');
       }, 2000);
     }
+  }, []);
+
+  const handleNextMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const nextIdx = (currentMatchIndex + 1) % matches.length;
+    setCurrentMatchIndex(nextIdx);
+    const target = matches[nextIdx];
+    if (target) handleScrollToMessage(target.id);
+  }, [matches, currentMatchIndex, handleScrollToMessage]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const prevIdx = (currentMatchIndex - 1 + matches.length) % matches.length;
+    setCurrentMatchIndex(prevIdx);
+    const target = matches[prevIdx];
+    if (target) handleScrollToMessage(target.id);
+  }, [matches, currentMatchIndex, handleScrollToMessage]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        handlePrevMatch();
+      } else {
+        handleNextMatch();
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      dispatch(toggleSearchInChat(false));
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const handleClose = () => {
+    dispatch(toggleSearchInChat(false));
   };
 
   const highlightMatch = (text: string, search: string) => {
@@ -63,7 +101,7 @@ export const ChatSearchDrawer: React.FC = () => {
       part.toLowerCase() === search.toLowerCase() ? (
         <mark
           key={index}
-          className="bg-amber-200 dark:bg-amber-900/60 text-gray-900 dark:text-amber-100 rounded-xs px-0.5"
+          className="bg-amber-200 dark:bg-amber-900/60 text-gray-900 dark:text-amber-100 rounded-xs px-0.5 font-semibold"
         >
           {part}
         </mark>
@@ -94,8 +132,8 @@ export const ChatSearchDrawer: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+      {/* Search Input Bar with Match Navigation */}
+      <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           <input
@@ -103,7 +141,9 @@ export const ChatSearchDrawer: React.FC = () => {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search in this conversation..."
+            aria-label="Search in this conversation"
             className="w-full pl-9 pr-8 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#182229] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           {query && (
@@ -118,10 +158,41 @@ export const ChatSearchDrawer: React.FC = () => {
           )}
         </div>
 
+        {/* Match Count & Navigation Bar */}
         {query.trim() && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-1">
-            {matches.length} message{matches.length !== 1 ? 's' : ''} found
-          </p>
+          <div className="flex items-center justify-between px-1 text-xs text-gray-500 dark:text-gray-400 select-none">
+            <span className="font-medium">
+              {matches.length} message{matches.length !== 1 ? 's' : ''} found
+            </span>
+
+            {matches.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
+                  {currentMatchIndex + 1} of {matches.length}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevMatch}
+                    title="Previous match (Shift+Enter)"
+                    aria-label="Previous match"
+                    className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextMatch}
+                    title="Next match (Enter)"
+                    aria-label="Next match"
+                    className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -143,17 +214,26 @@ export const ChatSearchDrawer: React.FC = () => {
             </p>
           </div>
         ) : (
-          matches.map(msg => {
+          matches.map((msg, index) => {
             const sender = usersEntities[msg.senderId];
             const isMe = msg.senderId === currentUser?.id;
             const senderName = isMe ? 'You' : sender?.name ?? 'Unknown User';
+            const isSelectedMatch = index === currentMatchIndex;
 
             return (
               <button
                 key={msg.id}
                 type="button"
-                onClick={() => handleScrollToMessage(msg.id)}
-                className="w-full text-left p-3 rounded-xl border border-gray-100 dark:border-gray-800/80 bg-gray-50/50 dark:bg-[#182229]/60 hover:bg-teal-50/50 dark:hover:bg-teal-950/20 hover:border-teal-500/30 transition-all group"
+                onClick={() => {
+                  setCurrentMatchIndex(index);
+                  handleScrollToMessage(msg.id);
+                }}
+                className={cn(
+                  'w-full text-left p-3 rounded-xl border transition-all group select-none',
+                  isSelectedMatch
+                    ? 'border-teal-500 bg-teal-50/60 dark:bg-teal-950/40 shadow-xs'
+                    : 'border-gray-100 dark:border-gray-800/80 bg-gray-50/50 dark:bg-[#182229]/60 hover:bg-gray-100/60 dark:hover:bg-[#182229]'
+                )}
               >
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                   <div className="flex items-center gap-2">

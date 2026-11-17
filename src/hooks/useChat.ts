@@ -14,6 +14,7 @@ import {
   messageReceived,
   setReplyingTo,
 } from '../features/messages/messagesSlice';
+import { showToast } from '../features/settings/uiSlice';
 import { simulationService } from '../services/simulationService';
 import type { Message, MessageReply } from '../types';
 
@@ -122,6 +123,9 @@ export function useChat() {
       }
 
       const sentMsg = actionResult.payload as Message;
+
+      // Notify message sent
+      dispatch(showToast({ message: 'Message sent', type: 'success', duration: 1500 }));
 
       // 2. Simulate progressive delivery updates (sent -> delivered -> read)
       const cancelStatus = simulationService.simulateMessageStatusTransition(newStatus => {

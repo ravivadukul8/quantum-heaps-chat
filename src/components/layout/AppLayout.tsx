@@ -13,10 +13,12 @@ import { AddMemberModal } from '../../features/groups/components/AddMemberModal'
 import { UserProfileModal } from '../../features/auth/components/UserProfileModal';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { Toast } from '../common/Toast';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '../../utils/classNames';
 
 export const AppLayout: React.FC = () => {
+  useKeyboardShortcuts();
   const mobilePane = useAppSelector(selectMobilePane);
   const activeConversation = useAppSelector(selectActiveConversation);
 

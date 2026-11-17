@@ -4,6 +4,8 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   selectActiveMessages,
   selectActiveConversationTypingUsers,
+  selectIsActiveConversationLoading,
+  selectMessagesError,
 } from '../messagesSelectors';
 import {
   setReplyingTo,
@@ -11,6 +13,7 @@ import {
   toggleReactionThunk,
   editMessageThunk,
   deleteMessageThunk,
+  fetchMessagesThunk,
 } from '../messagesSlice';
 import { selectActiveConversation } from '../../conversations/conversationsSelectors';
 import { selectCurrentUser, selectUsersEntities } from '../../auth/usersSlice';
@@ -20,6 +23,8 @@ import { MessageBubble } from './MessageBubble';
 import { DateSeparator } from './DateSeparator';
 import { TypingIndicator } from './TypingIndicator';
 import { Avatar } from '../../../components/common/Avatar';
+import { MessageSkeleton } from '../../../components/common/MessageSkeleton';
+import { ErrorState } from '../../../components/common/ErrorState';
 import { useAutoScroll } from '../../../hooks/useAutoScroll';
 import { cn } from '../../../utils/classNames';
 
@@ -34,6 +39,8 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   const currentUser = useAppSelector(selectCurrentUser);
   const usersEntities = useAppSelector(selectUsersEntities);
   const typingUsers = useAppSelector(selectActiveConversationTypingUsers);
+  const isLoading = useAppSelector(selectIsActiveConversationLoading);
+  const error = useAppSelector(selectMessagesError);
 
   const lastMessage = messages[messages.length - 1];
 
@@ -85,6 +92,23 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
 
   if (!activeConversation || !currentUser) {
     return null;
+  }
+
+  // 1. Loading thread skeleton
+  if (isLoading) {
+    return <MessageSkeleton count={6} className={className} />;
+  }
+
+  // 2. Error state with retry action
+  if (error) {
+    return (
+      <ErrorState
+        title="Could not load message thread"
+        message={error}
+        onRetry={() => dispatch(fetchMessagesThunk(activeConversation.id))}
+        className={className}
+      />
+    );
   }
 
   const isGroup = isGroupConversation(activeConversation);

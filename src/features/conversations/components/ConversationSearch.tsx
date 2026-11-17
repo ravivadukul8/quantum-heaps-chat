@@ -11,6 +11,7 @@ export const ConversationSearch: React.FC = () => {
       <div className="relative flex items-center">
         <Search className="absolute left-3 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
         <input
+          id="conversation-search-input"
           ref={inputRef}
           type="text"
           value={inputValue}

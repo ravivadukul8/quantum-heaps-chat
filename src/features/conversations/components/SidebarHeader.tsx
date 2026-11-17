@@ -1,26 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Users, Moon, Sun, MoreVertical, Circle, Check, Keyboard } from 'lucide-react';
+import { Users, MoreVertical, Circle, Check, Keyboard } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   selectCurrentUser,
   setCurrentUserStatus,
 } from '../../auth/usersSlice';
 import {
-  selectTheme,
-  toggleTheme,
   toggleUserProfileModal,
   toggleKeyboardShortcutsModal,
 } from '../../settings/uiSlice';
 import { openCreateGroupModal } from '../../groups/groupsSlice';
 import { Avatar } from '../../../components/common/Avatar';
 import { IconButton } from '../../../components/common/IconButton';
+import { ThemeToggle } from '../../../components/common/ThemeToggle';
 import type { UserStatus } from '../../../types';
 import { cn } from '../../../utils/classNames';
 
 export const SidebarHeader: React.FC = () => {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
-  const theme = useAppSelector(selectTheme);
 
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -134,11 +132,7 @@ export const SidebarHeader: React.FC = () => {
           label="Create New Group Channel"
           onClick={() => dispatch(openCreateGroupModal())}
         />
-        <IconButton
-          icon={theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-600" />}
-          label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          onClick={() => dispatch(toggleTheme())}
-        />
+        <ThemeToggle />
         <IconButton
           icon={<Keyboard className="w-4 h-4 text-gray-600 dark:text-gray-300" />}
           label="Keyboard Shortcuts (?)"

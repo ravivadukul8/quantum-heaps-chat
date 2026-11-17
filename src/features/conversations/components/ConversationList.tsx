@@ -5,12 +5,15 @@ import {
   setActiveConversation,
   setSearchQuery,
   setFilter,
+  fetchConversationsThunk,
 } from '../conversationsSlice';
 import {
   selectFilteredConversations,
   selectActiveConversationId,
   selectConversationFilter,
   selectConversationSearchQuery,
+  selectConversationsLoading,
+  selectConversationsError,
 } from '../conversationsSelectors';
 import {
   selectCurrentUser,
@@ -19,6 +22,8 @@ import {
 import { openCreateGroupModal } from '../../groups/groupsSlice';
 import { setMobilePane } from '../../settings/uiSlice';
 import { ConversationItem } from './ConversationItem';
+import { ConversationSkeleton } from '../../../components/common/ConversationSkeleton';
+import { ErrorState } from '../../../components/common/ErrorState';
 
 export const ConversationList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -26,6 +31,8 @@ export const ConversationList: React.FC = () => {
   const activeId = useAppSelector(selectActiveConversationId);
   const activeFilter = useAppSelector(selectConversationFilter);
   const searchQuery = useAppSelector(selectConversationSearchQuery);
+  const isLoading = useAppSelector(selectConversationsLoading);
+  const error = useAppSelector(selectConversationsError);
   const currentUser = useAppSelector(selectCurrentUser);
   const usersEntities = useAppSelector(selectUsersEntities);
 
@@ -40,9 +47,25 @@ export const ConversationList: React.FC = () => {
 
   if (!currentUser) return null;
 
-  // Contextual empty state rendering
+  // 1. Loading state with animated skeletons
+  if (isLoading) {
+    return <ConversationSkeleton count={6} className="p-1" />;
+  }
+
+  // 2. Error state with retry action
+  if (error) {
+    return (
+      <ErrorState
+        title="Could not load conversations"
+        message={error}
+        onRetry={() => dispatch(fetchConversationsThunk())}
+      />
+    );
+  }
+
+  // 3. Contextual empty state rendering
   if (conversations.length === 0) {
-    // 1. Search Query with no matches
+    // 3a. Search Query with no matches
     if (searchQuery) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
@@ -84,7 +107,7 @@ export const ConversationList: React.FC = () => {
       );
     }
 
-    // 2. Unread filter active but all messages are read
+    // 3b. Unread filter active but all messages are read
     if (activeFilter === 'unread') {
       return (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
@@ -108,7 +131,7 @@ export const ConversationList: React.FC = () => {
       );
     }
 
-    // 3. Groups filter active but no groups exist
+    // 3c. Groups filter active but no groups exist
     if (activeFilter === 'groups') {
       return (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
@@ -132,7 +155,7 @@ export const ConversationList: React.FC = () => {
       );
     }
 
-    // 4. Default empty state
+    // 3d. Default empty state
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
         <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3 text-gray-400">
@@ -168,3 +191,5 @@ export const ConversationList: React.FC = () => {
     </div>
   );
 };
+
+export default ConversationList;

@@ -17,6 +17,7 @@ export interface UIState {
   isKeyboardShortcutsModalOpen: boolean;
   isUserProfileModalOpen: boolean;
   soundEnabled: boolean;
+  toasts: ToastNotification[];
   toast: ToastNotification | null;
 }
 
@@ -45,6 +46,7 @@ const initialState: UIState = {
   isKeyboardShortcutsModalOpen: false,
   isUserProfileModalOpen: false,
   soundEnabled: true,
+  toasts: [],
   toast: null,
 };
 
@@ -101,16 +103,28 @@ export const uiSlice = createSlice({
     },
     showToast: (
       state,
-      action: PayloadAction<{ message: string; type?: 'success' | 'error' | 'info'; duration?: number }>
+      action: PayloadAction<{ id?: string; message: string; type?: 'success' | 'error' | 'info'; duration?: number }>
     ) => {
-      state.toast = {
-        id: `toast-${Date.now()}`,
+      const newToast: ToastNotification = {
+        id: action.payload.id || `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         message: action.payload.message,
         type: action.payload.type ?? 'success',
         duration: action.payload.duration ?? 2500,
       };
+      state.toasts.push(newToast);
+      if (state.toasts.length > 5) {
+        state.toasts.shift();
+      }
+      state.toast = newToast;
+    },
+    dismissToast: (state, action: PayloadAction<string>) => {
+      state.toasts = state.toasts.filter(t => t.id !== action.payload);
+      if (state.toast?.id === action.payload) {
+        state.toast = state.toasts[state.toasts.length - 1] ?? null;
+      }
     },
     hideToast: state => {
+      state.toasts = [];
       state.toast = null;
     },
   },
@@ -126,6 +140,7 @@ export const {
   toggleUserProfileModal,
   toggleSound,
   showToast,
+  dismissToast,
   hideToast,
 } = uiSlice.actions;
 
@@ -142,6 +157,7 @@ export const selectIsKeyboardShortcutsModalOpen = (state: HasUIState): boolean =
 export const selectIsUserProfileModalOpen = (state: HasUIState): boolean =>
   state.ui.isUserProfileModalOpen;
 export const selectSoundEnabled = (state: HasUIState): boolean => state.ui.soundEnabled;
+export const selectToasts = (state: HasUIState): ToastNotification[] => state.ui.toasts;
 export const selectToast = (state: HasUIState): ToastNotification | null => state.ui.toast;
 
 export default uiSlice.reducer;

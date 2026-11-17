@@ -51,6 +51,9 @@ export const selectIsActiveConversationLoading = createSelector(
   }
 );
 
+export const selectMessagesError = (state: HasMessagesAndChatState): string | null =>
+  state.messages.error;
+
 export const selectMessagesByConversationId =
   (conversationId: string) =>
     (state: HasMessagesAndChatState): Message[] =>
