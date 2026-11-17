@@ -16,7 +16,7 @@
 - [1. Project Overview](#1-project-overview)
 - [2. Key Features](#2-key-features)
 - [3. Technology Stack](#3-technology-stack)
-- [4. Screenshots](#4-screenshots)
+- [4. Application Architecture & Data Flow](#4-application-architecture--data-flow)
 - [5. Project Folder Structure](#5-project-folder-structure)
 - [6. Installation Instructions](#6-installation-instructions)
 - [7. Development Commands](#7-development-commands)
@@ -99,31 +99,172 @@ The application functions completely standalone without an external backend or d
 
 ---
 
-## 4. Screenshots
+## 4. Application Architecture & Data Flow
 
-> *Placeholder references for visual UI flows.*
+### 4.1 System Component & Layer Relationship Diagram
 
+The diagram below illustrates the architectural layers and interactions across UI components, feature modules, custom hooks, Redux Toolkit state, mock services, and persistence:
+
+```mermaid
+flowchart TD
+    subgraph UI_Layer["1. Presentation & UI Layer (React 18)"]
+        direction TB
+        AppLayout["AppLayout Container"]
+        subgraph UI_Components["React UI Components"]
+            SidebarComp["ConversationSidebar<br/>(Header, Search, FilterTabs, List, Item)"]
+            ChatComp["Active Chat Window<br/>(ChatHeader, MessageList, MessageBubble)"]
+            ComposerComp["Message Input Area<br/>(MessageInput, ReplyPreview, EmojiPicker)"]
+            DrawersModals["Drawers & Global Modals<br/>(GroupInfoDrawer, ChatSearchDrawer, AddMemberModal, etc.)"]
+            CommonUI["Common UI Primitives<br/>(Avatar, Badge, Toast, ConfirmDialog, ThemeToggle)"]
+        end
+        AppLayout --> SidebarComp
+        AppLayout --> ChatComp
+        AppLayout --> ComposerComp
+        AppLayout --> DrawersModals
+        AppLayout --> CommonUI
+    end
+
+    subgraph Hooks_Layer["2. Custom Hooks Layer"]
+        direction TB
+        useChatHook["useChat()<br/>(Dispatch message, trigger typing, cancel reply)"]
+        useAutoScrollHook["useAutoScroll()<br/>(Scroll position, unread below counter)"]
+        useConvSearchHook["useConversationSearch()<br/>(Debounced filter, clear query)"]
+        useKeyShortcutsHook["useKeyboardShortcuts()<br/>(Ctrl+K, '/', '?', Escape)"]
+        useDebounceHook["useDebounce()<br/>(Generic value debouncing)"]
+    end
+
+    ComposerComp --> useChatHook
+    ChatComp --> useAutoScrollHook
+    SidebarComp --> useConvSearchHook
+    AppLayout --> useKeyShortcutsHook
+
+    subgraph Features_Layer["3. Feature Modules Layer"]
+        direction TB
+        AuthFeat["features/auth<br/>(User profile, presence)"]
+        ConvFeat["features/conversations<br/>(List, search, filter, pin)"]
+        MsgFeat["features/messages<br/>(Feed, delivery status, reactions, reply)"]
+        GroupFeat["features/groups<br/>(Channels, member admin, modal dialogs)"]
+        SettingsFeat["features/settings<br/>(Theme, mobile pane, in-chat search)"]
+    end
+
+    useChatHook --> MsgFeat
+    useConvSearchHook --> ConvFeat
+    useKeyShortcutsHook --> SettingsFeat
+
+    subgraph Redux_Layer["4. Redux Toolkit Centralized Store"]
+        direction TB
+        Store["Root Redux Store<br/>(configureStore)"]
+        
+        subgraph Slices["Redux Slices & Reducers"]
+            UsersSlice["usersSlice<br/>(entities, ids, currentUserId)"]
+            ConvsSlice["conversationsSlice<br/>(entities, filter, searchQuery)"]
+            MsgsSlice["messagesSlice<br/>(byConversationId, typingUsers, replyingTo)"]
+            GroupsSlice["groupsSlice<br/>(drawer/modal visibility states)"]
+            UISlice["uiSlice<br/>(theme, mobilePane, toasts, inChatSearch)"]
+        end
+
+        subgraph Selectors["Memoized Reselect Selectors"]
+            ConvSelectors["conversationsSelectors<br/>(selectFilteredConversations, selectTotalUnreadCount)"]
+            MsgSelectors["messagesSelectors<br/>(selectActiveMessages, selectActiveConversationTypingUsers)"]
+            UserSelectors["usersSelectors<br/>(selectCurrentUser, selectUsersEntities)"]
+            UISelectors["uiSelectors<br/>(selectTheme, selectMobilePane, selectToasts)"]
+        end
+
+        Store --> UsersSlice
+        Store --> ConvsSlice
+        Store --> MsgsSlice
+        Store --> GroupsSlice
+        Store --> UISlice
+
+        UsersSlice --> UserSelectors
+        ConvsSlice --> ConvSelectors
+        MsgsSlice --> MsgSelectors
+        UISlice --> UISelectors
+    end
+
+    UI_Components -.->|useAppSelector| Selectors
+    UI_Components -.->|useAppDispatch| Slices
+    Hooks_Layer -.->|dispatch thunk / action| Slices
+
+    subgraph Services_Layer["5. Mock API & Services Layer"]
+        direction TB
+        ConvService["conversationService<br/>(Async queries & group mutations)"]
+        MsgService["messageService<br/>(Async fetch thread & send transport)"]
+        SimService["mockSimulationService<br/>(Progressive tick delivery & partner replies)"]
+        StorageService["storageService<br/>(Browser storage abstraction)"]
+    end
+
+    Slices -->|Async Thunks| MsgService
+    Slices -->|Async Thunks| ConvService
+    Slices -->|Storage Sync| StorageService
+    MsgService -->|Trigger status/reply| SimService
+    SimService -->|Dispatch status/typing| Slices
+
+    subgraph Data_Layer["6. Data & Persistence Layer"]
+        direction TB
+        MockUsersData["src/mock/users.mock.ts<br/>(Contacts, Profiles)"]
+        MockConvsData["src/mock/conversations.mock.ts<br/>(Direct chats, Group channels)"]
+        MockMsgsData["src/mock/messages.mock.ts<br/>(Preloaded thread histories)"]
+        LocalStorage["Browser LocalStorage<br/>(Theme: 'qh_chat_theme', Active conv, Cached convs)"]
+    end
+
+    ConvService --> MockConvsData
+    MsgService --> MockMsgsData
+    ConvService --> MockUsersData
+    StorageService <--> LocalStorage
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                    DESKTOP MAIN CHAT DASHBOARD                                     |
-+----------------------------------------------------------------------------------------------------+
-|  [Sidebar Header: User & Theme]  |  [Active Chat Header: Partner / Group Details & Actions]        |
-|  [Search: "Ctrl+K"]              |                                                                 |
-|  [Filters: All | Unread | Groups]|  [Message Feed: Date Separators, Sent/Received Message Bubbles] |
-|  [Conversation Feed List]        |  [Reaction Badges, Status Indicators (Sent/Delivered/Read)]     |
-|                                  |  [Message Composer: Reply Banner, Textarea, Send / Mic]         |
-+----------------------------------------------------------------------------------------------------+
+
+### 4.2 Unidirectional Redux Data Flow Diagram
+
+Every state mutation in the application adheres strictly to the unidirectional Redux data flow cycle:
+
+```mermaid
+flowchart LR
+    A["1. User Interaction<br/>(Click, Typing, Shortcut)"] --> B["2. React Component<br/>(MessageInput, FilterTabs, etc.)"]
+    B --> C["3. Redux Action / Thunk<br/>(sendMessageThunk, setFilter)"]
+    C --> D["4. Redux Reducer<br/>(Pure state update in Slice)"]
+    D --> E["5. Updated Store<br/>(Immutable state tree)"]
+    E --> F["6. Memoized Selector<br/>(createSelector cache check)"]
+    F --> G["7. UI Re-render<br/>(Optimized React DOM update)"]
 ```
 
-### Light Mode & Dark Mode
-| Light Mode | Dark Mode |
-|---|---|
-| ![Dashboard Light Mode Placeholder](https://via.placeholder.com/600x380/ffffff/0f766e?text=Quantum+Heaps+Chat+-+Light+Mode) | ![Dashboard Dark Mode Placeholder](https://via.placeholder.com/600x380/111b21/2dd4bf?text=Quantum+Heaps+Chat+-+Dark+Mode) |
+### 4.3 Architectural Layer Responsibilities
 
-### Interactive Actions & Group Management
-| Message Interactions & Reactions | Group Management Drawer |
-|---|---|
-| ![Message Actions Placeholder](https://via.placeholder.com/600x380/f3f4f6/1e293b?text=Message+Actions+%26+Reactions) | ![Group Management Placeholder](https://via.placeholder.com/600x380/f3f4f6/1e293b?text=Group+Details+%26+Members+Drawer) |
+1. **Presentation & UI Layer (`src/components/`, `src/features/*/components/`)**:
+   - Renders visual layout, semantic accessibility attributes (`role`, `aria-*`), and responsive Tailwind utility styling.
+   - Declarative and stateless where possible; delegates user events and state queries to typed Redux hooks (`useAppDispatch`, `useAppSelector`) and custom business hooks.
+   - Kept pure and free from direct networking, timer scheduling, or local storage side-effects.
+
+2. **Feature Modules Layer (`src/features/`)**:
+   - Organizes the application into self-contained domain features (`auth`, `conversations`, `messages`, `groups`, `settings`).
+   - Co-locates slices, thunks, selectors, and domain-specific UI components to maintain strict cohesion and ease of maintenance.
+
+3. **Custom Hooks Layer (`src/hooks/`)**:
+   - Encapsulates non-visual business workflows, DOM event listeners, and complex UI orchestration:
+     - `useChat`: Orchestrates sending messages, typing simulation schedules, and reply banner cancellation.
+     - `useAutoScroll`: Manages scroll-to-bottom behavior, observer cleanup, and unread message counters below the viewport.
+     - `useConversationSearch`: Implements debounced query processing and match calculations.
+     - `useKeyboardShortcuts`: Handles window keydown event listening for power-user navigation (`Ctrl+K`, `/`, `?`, `Escape`).
+     - `useDebounce`: Generic debounce timing utility.
+
+4. **Redux Toolkit Centralized Store Layer (`src/store/`)**:
+   - Acts as the single source of truth for the entire application state.
+   - Normalizes relational data (`entities` dictionary and `ids` array) to avoid deep nested state trees.
+   - Leverages Immer inside slice reducers for safe, immutable state transformations.
+   - Manages asynchronous side-effects and optimistic UI updates through `createAsyncThunk`.
+
+5. **Memoized Selectors Layer (`src/features/*/selectors.ts`)**:
+   - Built with Reselect's `createSelector` to compute derived, filtered, and aggregated data.
+   - Provides memoization and referential caching to ensure components only re-render when their specific sliced data inputs change.
+
+6. **Mock API & Simulation Services Layer (`src/services/`)**:
+   - Simulates realistic network transport with latency (`setTimeout`) for conversations, messages, and group operations.
+   - `mockSimulationService`: Operates as a synthetic WebSocket server, advancing delivery status ticks (`sent` &rarr; `delivered` &rarr; `read`) and generating simulated partner typing and automated replies.
+   - `storageService`: Manages synchronized browser persistence with defensive JSON parsing.
+
+7. **Mock Data & Persistence Layer (`src/mock/`, `localStorage`)**:
+   - Seed fixtures (`mockUsers`, `mockConversations`, `mockMessagesByConversationId`) provide rich, deterministic initial state for development and testing.
+   - Browser `localStorage` persists theme mode, active conversation pointers, and conversation updates across page refreshes.
 
 ---
 
