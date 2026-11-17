@@ -78,3 +78,38 @@ export function formatDateSeparator(isoString: string): string {
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 }
+
+/**
+ * Formats user's last seen time (e.g. "Last seen today at 10:45 AM", "Last seen yesterday at 03:20 PM", etc.).
+ */
+export function formatLastSeen(isoString?: string): string {
+  if (!isoString) return 'Offline';
+
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return 'Offline';
+
+  const now = new Date();
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return `Last seen today at ${timeStr}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return `Last seen yesterday at ${timeStr}`;
+  }
+
+  return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+}
