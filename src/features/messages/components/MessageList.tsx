@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Lock, Sparkles } from 'lucide-react';
+import React, { useMemo, useCallback } from 'react';
+import { MessageSquare, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   selectActiveMessages,
@@ -18,7 +18,9 @@ import { isGroupConversation, type Message } from '../../../types';
 import { groupMessagesByDate } from '../../../utils/messageGrouper';
 import { MessageBubble } from './MessageBubble';
 import { DateSeparator } from './DateSeparator';
+import { TypingIndicator } from './TypingIndicator';
 import { Avatar } from '../../../components/common/Avatar';
+import { useAutoScroll } from '../../../hooks/useAutoScroll';
 import { cn } from '../../../utils/classNames';
 
 export interface MessageListProps {
@@ -33,24 +35,24 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   const usersEntities = useAppSelector(selectUsersEntities);
   const typingUsers = useAppSelector(selectActiveConversationTypingUsers);
 
-  const scrollBottomRef = useRef<HTMLDivElement>(null);
-  const listContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages[messages.length - 1];
+
+  // Auto-scroll controller hook
+  const {
+    containerRef,
+    scrollBottomRef,
+    showScrollButton,
+    unreadBelowCount,
+    scrollToBottom,
+  } = useAutoScroll({
+    activeConversationId: activeConversation?.id,
+    messagesCount: messages.length,
+    lastMessageSenderId: lastMessage?.senderId,
+    currentUserId: currentUser?.id,
+  });
 
   // Group messages chronologically by date
   const dateGroups = useMemo(() => groupMessagesByDate(messages), [messages]);
-
-  // Auto-scroll to bottom on new messages or conversation switch
-  const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'smooth') => {
-    scrollBottomRef.current?.scrollIntoView?.({ behavior });
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom('auto');
-  }, [activeConversation?.id, scrollToBottom]);
-
-  useEffect(() => {
-    scrollToBottom('smooth');
-  }, [messages.length, scrollToBottom]);
 
   const activeConvId = activeConversation?.id;
 
@@ -172,12 +174,12 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
 
   return (
     <div
-      ref={listContainerRef}
+      ref={containerRef}
       role="log"
       aria-live="polite"
       aria-label="Message feed"
       className={cn(
-        'flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-2 select-text scroll-smooth',
+        'relative flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-2 select-text scroll-smooth',
         className
       )}
     >
@@ -224,22 +226,29 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
 
       {/* Floating Typing Indicator bubble in feed if active */}
       {otherTypingUsers.length > 0 && (
-        <div className="flex items-center gap-2 mt-2 ml-1 text-xs text-teal-600 dark:text-teal-400 select-none animate-in fade-in duration-200">
-          <div className="flex items-center gap-1 px-3 py-1.5 rounded-2xl bg-white dark:bg-[#202c33] border border-gray-200/60 dark:border-gray-800/60 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" />
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"
-              style={{ animationDelay: '150ms' }}
-            />
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce"
-              style={{ animationDelay: '300ms' }}
-            />
-            <span className="ml-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-              {otherTypingUsers.map(u => u.userName.split(' ')[0]).join(', ')} is typing...
+        <TypingIndicator users={otherTypingUsers} variant="bubble" />
+      )}
+
+      {/* Scroll-to-bottom floating button when user is away from bottom */}
+      {showScrollButton && (
+        <button
+          type="button"
+          onClick={() => scrollToBottom('smooth')}
+          aria-label="Scroll to bottom"
+          className="sticky bottom-4 ml-auto mr-2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#202c33] text-gray-700 dark:text-gray-200 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/80 hover:text-teal-600 dark:hover:text-teal-400 active:scale-95 transition-all animate-in fade-in slide-in-from-bottom-2 duration-150 select-none"
+        >
+          <ChevronDown className="w-4 h-4" />
+          {unreadBelowCount > 0 ? (
+            <span className="flex items-center gap-1">
+              <span className="text-xs font-semibold">New messages</span>
+              <span className="flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[10px] font-bold bg-teal-600 text-white animate-pulse">
+                {unreadBelowCount}
+              </span>
             </span>
-          </div>
-        </div>
+          ) : (
+            <span className="text-xs font-medium hidden sm:inline">Latest</span>
+          )}
+        </button>
       )}
 
       {/* Scroll anchor */}

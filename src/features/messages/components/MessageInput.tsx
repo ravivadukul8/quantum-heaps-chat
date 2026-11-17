@@ -14,7 +14,7 @@ export interface MessageInputProps {
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({ className }) => {
-  const { replyingTo, handleSendMessage, handleCancelReply } = useChat();
+  const { replyingTo, handleSendMessage, handleCancelReply, handleTyping, stopTyping } = useChat();
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -116,6 +116,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({ className }) => {
             ref={e => {
               formRef(e);
               textareaRef.current = e;
+            }}
+            onChange={e => {
+              restField.onChange(e);
+              if (e.target.value.trim()) {
+                handleTyping();
+              } else {
+                stopTyping();
+              }
+            }}
+            onBlur={e => {
+              restField.onBlur(e);
+              stopTyping();
             }}
             onKeyDown={handleKeyDown}
             rows={1}

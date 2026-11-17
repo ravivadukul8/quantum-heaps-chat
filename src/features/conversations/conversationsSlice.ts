@@ -1,5 +1,12 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { Conversation, ConversationFilter, Message, GroupMember, GroupConversation } from '../../types';
+import type {
+  Conversation,
+  ConversationFilter,
+  Message,
+  MessageStatus,
+  GroupMember,
+  GroupConversation,
+} from '../../types';
 import { isGroupConversation } from '../../types';
 import { mockConversations } from '../../mock/conversations.mock';
 import { conversationService } from '../../services/conversationService';
@@ -109,6 +116,16 @@ export const conversationsSlice = createSlice({
       const conv = state.entities[action.payload];
       if (conv) {
         conv.isMuted = !conv.isMuted;
+        storageService.saveConversations(Object.values(state.entities));
+      }
+    },
+    updateConversationLastMessageStatus: (
+      state,
+      action: PayloadAction<{ conversationId: string; messageId: string; status: MessageStatus }>
+    ) => {
+      const conv = state.entities[action.payload.conversationId];
+      if (conv && conv.lastMessage && conv.lastMessage.id === action.payload.messageId) {
+        conv.lastMessage.status = action.payload.status;
         storageService.saveConversations(Object.values(state.entities));
       }
     },
@@ -225,6 +242,7 @@ export const {
   createGroup,
   addGroupMember,
   removeGroupMember,
+  updateConversationLastMessageStatus,
 } = conversationsSlice.actions;
 
 export * from './conversationsSelectors';

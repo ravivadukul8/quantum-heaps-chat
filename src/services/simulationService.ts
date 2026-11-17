@@ -83,6 +83,49 @@ export const simulationService = {
   },
 
   /**
+   * Simulates group typing activity where multiple users type concurrently.
+   */
+  simulateGroupTyping(
+    conversationId: string,
+    onTypingChange: (isTyping: boolean, user: User) => void
+  ): () => void {
+    const conv = mockConversations.find(c => c.id === conversationId);
+    if (!conv || !isGroupConversation(conv)) {
+      return this.simulateTyping(conversationId, onTypingChange);
+    }
+
+    const otherMembers = conv.members.filter(m => m.userId !== 'user-1');
+    const selected = otherMembers.slice(0, 2);
+    const cleanups: Array<() => void> = [];
+
+    selected.forEach((member, idx) => {
+      const user = mockUsersById[member.userId];
+      if (user) {
+        const startDelay = idx * 250;
+        const duration = 2000 + idx * 300;
+
+        const startTimer = setTimeout(() => {
+          onTypingChange(true, user);
+        }, startDelay);
+
+        const stopTimer = setTimeout(() => {
+          onTypingChange(false, user);
+        }, startDelay + duration);
+
+        cleanups.push(() => {
+          clearTimeout(startTimer);
+          clearTimeout(stopTimer);
+          onTypingChange(false, user);
+        });
+      }
+    });
+
+    return () => {
+      cleanups.forEach(fn => fn());
+    };
+  },
+
+  /**
    * Generates a simulated incoming response message.
    */
   async simulateIncomingMessage(

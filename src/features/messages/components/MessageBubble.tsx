@@ -2,7 +2,7 @@ import React, { memo, useState, useRef, useEffect } from 'react';
 import { Ban, CornerUpLeft } from 'lucide-react';
 import type { Message, User } from '../../../types';
 import { Avatar } from '../../../components/common/Avatar';
-import { MessageStatusIcon } from '../../../components/common/MessageStatusIcon';
+import { MessageStatus } from '../../../components/common/MessageStatus';
 import { formatMessageTime } from '../../../utils/dateUtils';
 import { MessageActionsToolbar } from './MessageActionsToolbar';
 import { cn } from '../../../utils/classNames';
@@ -247,7 +247,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
               )}
               <span>{formatMessageTime(message.timestamp)}</span>
               {isMe && !message.isDeleted && (
-                <MessageStatusIcon status={message.status} className="shrink-0 ml-0.5" />
+                <MessageStatus status={message.status} iconClassName="shrink-0 ml-0.5" />
               )}
             </div>
           </div>

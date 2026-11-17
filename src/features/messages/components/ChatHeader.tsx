@@ -33,6 +33,7 @@ import {
 import { isGroupConversation } from '../../../types';
 import { Avatar } from '../../../components/common/Avatar';
 import { IconButton } from '../../../components/common/IconButton';
+import { formatTypingText } from '../../../utils/typingUtils';
 import { formatLastSeen } from '../../../utils/dateUtils';
 import { cn } from '../../../utils/classNames';
 
@@ -64,10 +65,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ className }) => {
   // Check if anyone else is actively typing in this chat
   const otherTypingUsers = typingUsers.filter(u => u.userId !== currentUser.id);
   const isTyping = otherTypingUsers.length > 0;
-  const typingText =
-    otherTypingUsers.length === 1
-      ? `${otherTypingUsers[0]?.userName.split(' ')[0]} is typing...`
-      : `${otherTypingUsers.length} people are typing...`;
+  const typingText = formatTypingText(otherTypingUsers);
 
   if (isGroup) {
     title = activeConversation.name;

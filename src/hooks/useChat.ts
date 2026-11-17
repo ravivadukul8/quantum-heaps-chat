@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   selectActiveConversation,
   updateLastMessage,
+  updateConversationLastMessageStatus,
 } from '../features/conversations/conversationsSlice';
 import { selectCurrentUser } from '../features/auth/usersSlice';
 import {
@@ -22,32 +23,95 @@ export function useChat() {
   const currentUser = useAppSelector(selectCurrentUser);
   const replyingTo = useAppSelector(selectReplyingToMessage);
 
+  // Stable refs to prevent unnecessary re-creation of callbacks and accidental timer cancellations
+  const activeConvRef = useRef(activeConversation);
+  activeConvRef.current = activeConversation;
+
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+
   // Active timers cleanup refs
   const cleanupFnsRef = useRef<Array<() => void>>([]);
+  const isTypingRef = useRef(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clean up all pending simulation timers on unmount or conversation change
+  const stopTyping = useCallback(() => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    const conv = activeConvRef.current;
+    const user = currentUserRef.current;
+    if (isTypingRef.current && conv && user) {
+      isTypingRef.current = false;
+      dispatch(
+        setTypingIndicator({
+          conversationId: conv.id,
+          userId: user.id,
+          userName: user.name,
+          isTyping: false,
+        })
+      );
+    }
+  }, [dispatch]);
+
+  const handleTyping = useCallback(() => {
+    const conv = activeConvRef.current;
+    const user = currentUserRef.current;
+    if (!conv || !user) return;
+
+    // Dispatch typing = true only once at the beginning of a typing burst to prevent redundant updates
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      dispatch(
+        setTypingIndicator({
+          conversationId: conv.id,
+          userId: user.id,
+          userName: user.name,
+          isTyping: true,
+        })
+      );
+    }
+
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+
+    typingTimerRef.current = setTimeout(() => {
+      stopTyping();
+    }, 1800);
+  }, [dispatch, stopTyping]);
+
+  // Clean up timers ONLY on conversation change or unmount
+  const activeId = activeConversation?.id;
   useEffect(() => {
     return () => {
+      stopTyping();
       cleanupFnsRef.current.forEach(fn => fn());
       cleanupFnsRef.current = [];
     };
-  }, [activeConversation?.id]);
+  }, [activeId, stopTyping]);
 
   const handleSendMessage = useCallback(
     async (rawContent: string) => {
       const content = rawContent.trim();
-      if (!content || !activeConversation || !currentUser) {
+      const conv = activeConvRef.current;
+      const user = currentUserRef.current;
+      if (!content || !conv || !user) {
         return false;
       }
 
-      const conversationId = activeConversation.id;
+      // Stop typing immediately when sending
+      stopTyping();
+
+      const conversationId = conv.id;
       const replyPayload: MessageReply | undefined = replyingTo ? { ...replyingTo } : undefined;
 
       // 1. Dispatch outgoing message to Redux Toolkit
       const actionResult = await dispatch(
         sendMessageThunk({
           conversationId,
-          senderId: currentUser.id,
+          senderId: user.id,
           content,
           replyTo: replyPayload,
         })
@@ -63,6 +127,13 @@ export function useChat() {
       const cancelStatus = simulationService.simulateMessageStatusTransition(newStatus => {
         dispatch(
           updateMessageStatus({
+            conversationId,
+            messageId: sentMsg.id,
+            status: newStatus,
+          })
+        );
+        dispatch(
+          updateConversationLastMessageStatus({
             conversationId,
             messageId: sentMsg.id,
             status: newStatus,
@@ -95,7 +166,7 @@ export function useChat() {
 
       return true;
     },
-    [activeConversation, currentUser, replyingTo, dispatch]
+    [dispatch, replyingTo, stopTyping]
   );
 
   const handleCancelReply = useCallback(() => {
@@ -108,5 +179,9 @@ export function useChat() {
     replyingTo,
     handleSendMessage,
     handleCancelReply,
+    handleTyping,
+    stopTyping,
   };
 }
+
+export default useChat;
