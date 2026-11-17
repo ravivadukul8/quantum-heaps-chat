@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Users, Moon, Sun, MoreVertical, Circle, Check } from 'lucide-react';
+import { Users, Moon, Sun, MoreVertical, Circle, Check, Keyboard } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   selectCurrentUser,
@@ -9,6 +9,7 @@ import {
   selectTheme,
   toggleTheme,
   toggleUserProfileModal,
+  toggleKeyboardShortcutsModal,
 } from '../../settings/uiSlice';
 import { openCreateGroupModal } from '../../groups/groupsSlice';
 import { Avatar } from '../../../components/common/Avatar';
@@ -137,6 +138,11 @@ export const SidebarHeader: React.FC = () => {
           icon={theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-600" />}
           label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
           onClick={() => dispatch(toggleTheme())}
+        />
+        <IconButton
+          icon={<Keyboard className="w-4 h-4 text-gray-600 dark:text-gray-300" />}
+          label="Keyboard Shortcuts (?)"
+          onClick={() => dispatch(toggleKeyboardShortcutsModal(true))}
         />
         <IconButton
           icon={<MoreVertical className="w-4 h-4" />}

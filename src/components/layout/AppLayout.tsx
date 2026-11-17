@@ -5,8 +5,13 @@ import { selectActiveConversation } from '../../features/conversations/conversat
 import { ConversationSidebar } from '../../features/conversations/components/ConversationSidebar';
 import { ChatHeader } from '../../features/messages/components/ChatHeader';
 import { MessageList } from '../../features/messages/components/MessageList';
+import { MessageInput } from '../../features/messages/components/MessageInput';
+import { ChatSearchDrawer } from '../../features/messages/components/ChatSearchDrawer';
+import { GroupInfoDrawer } from '../../features/groups/components/GroupInfoDrawer';
 import { CreateGroupModal } from '../../features/groups/components/CreateGroupModal';
+import { AddMemberModal } from '../../features/groups/components/AddMemberModal';
 import { UserProfileModal } from '../../features/auth/components/UserProfileModal';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '../../utils/classNames';
 
@@ -17,7 +22,7 @@ export const AppLayout: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100 dark:bg-[#0c1317] antialiased">
       {/* Outer Shell Container (WhatsApp/Slack Desktop Centered Frame or Fullscreen) */}
-      <div className="flex h-full w-full max-w-[1720px] mx-auto bg-white dark:bg-[#111b21] shadow-2xl overflow-hidden">
+      <div className="flex h-full w-full max-w-[1720px] mx-auto bg-white dark:bg-[#111b21] shadow-2xl overflow-hidden relative">
         {/* Left Pane: Conversation Sidebar */}
         <div
           className={cn(
@@ -40,8 +45,11 @@ export const AppLayout: React.FC = () => {
               {/* Chat Header */}
               <ChatHeader />
 
-              {/* Message List Feed */}
+              {/* Message Feed */}
               <MessageList />
+
+              {/* Message Composer Input Area */}
+              <MessageInput />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
@@ -57,11 +65,17 @@ export const AppLayout: React.FC = () => {
             </div>
           )}
         </main>
+
+        {/* Slide-out Drawers */}
+        <ChatSearchDrawer />
+        <GroupInfoDrawer />
       </div>
 
       {/* Global Modals */}
       <CreateGroupModal />
+      <AddMemberModal />
       <UserProfileModal />
+      <KeyboardShortcutsModal />
     </div>
   );
 };

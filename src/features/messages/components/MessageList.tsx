@@ -9,6 +9,8 @@ import {
   setReplyingTo,
   optimisticToggleReaction,
   toggleReactionThunk,
+  editMessageThunk,
+  deleteMessageThunk,
 } from '../messagesSlice';
 import { selectActiveConversation } from '../../conversations/conversationsSelectors';
 import { selectCurrentUser, selectUsersEntities } from '../../auth/usersSlice';
@@ -49,6 +51,35 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   useEffect(() => {
     scrollToBottom('smooth');
   }, [messages.length, scrollToBottom]);
+
+  const activeConvId = activeConversation?.id;
+
+  const handleEditMessage = useCallback(
+    (messageId: string, newContent: string) => {
+      if (!activeConvId) return;
+      dispatch(
+        editMessageThunk({
+          conversationId: activeConvId,
+          messageId,
+          content: newContent,
+        })
+      );
+    },
+    [dispatch, activeConvId]
+  );
+
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      if (!activeConvId) return;
+      dispatch(
+        deleteMessageThunk({
+          conversationId: activeConvId,
+          messageId,
+        })
+      );
+    },
+    [dispatch, activeConvId]
+  );
 
   if (!activeConversation || !currentUser) {
     return null;
@@ -183,6 +214,8 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
                 currentUserId={currentUser.id}
                 onReply={handleReply}
                 onReactionClick={handleReactionClick}
+                onEditMessage={handleEditMessage}
+                onDeleteMessage={handleDeleteMessage}
               />
             );
           })}

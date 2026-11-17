@@ -1,9 +1,10 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import { Ban, CornerUpLeft } from 'lucide-react';
 import type { Message, User } from '../../../types';
 import { Avatar } from '../../../components/common/Avatar';
 import { MessageStatusIcon } from '../../../components/common/MessageStatusIcon';
 import { formatMessageTime } from '../../../utils/dateUtils';
+import { MessageActionsToolbar } from './MessageActionsToolbar';
 import { cn } from '../../../utils/classNames';
 
 export interface MessageBubbleProps {
@@ -15,6 +16,8 @@ export interface MessageBubbleProps {
   currentUserId: string;
   onReply?: (message: Message) => void;
   onReactionClick?: (messageId: string, emoji: string) => void;
+  onEditMessage?: (messageId: string, newContent: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 // Consistent sender colors in group conversations
@@ -48,18 +51,75 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
     currentUserId,
     onReply,
     onReactionClick,
+    onEditMessage,
+    onDeleteMessage,
   }) => {
     const senderName = sender?.name ?? 'Unknown User';
     const senderColorClass = getSenderColor(senderName);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(message.content);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const editInputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-focus and select text when entering edit mode
+    useEffect(() => {
+      if (isEditing) {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }
+    }, [isEditing]);
+
+    const handleStartEdit = () => {
+      setEditContent(message.content);
+      setIsEditing(true);
+      setShowDeleteConfirm(false);
+    };
+
+    const handleCancelEdit = () => {
+      setIsEditing(false);
+      setEditContent(message.content);
+    };
+
+    const handleSaveEdit = () => {
+      const trimmed = editContent.trim();
+      if (!trimmed) return;
+      if (trimmed !== message.content && onEditMessage) {
+        onEditMessage(message.id, trimmed);
+      }
+      setIsEditing(false);
+    };
+
+    const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSaveEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancelEdit();
+      }
+    };
+
+    const handleCopy = () => {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(message.content);
+      }
+    };
+
+    const handleConfirmDelete = () => {
+      onDeleteMessage?.(message.id);
+      setShowDeleteConfirm(false);
+    };
+
     return (
       <div
+        id={`msg-${message.id}`}
         className={cn(
           'group relative flex w-full my-1 transition-all',
           isMe ? 'justify-end' : 'justify-start'
         )}
       >
-        {/* Incoming Group Avatar (optional avatar for received messages in group) */}
+        {/* Incoming Group Avatar (avatar for received messages in group) */}
         {!isMe && isGroup && (
           <div className="w-8 shrink-0 mr-2 flex flex-col justify-end self-end">
             {showSenderHeader ? (
@@ -114,9 +174,69 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
                 <Ban className="w-4 h-4 text-gray-400 shrink-0" />
                 <span>This message was deleted</span>
               </div>
+            ) : isEditing ? (
+              /* Inline Editing Form */
+              <div className="py-1 min-w-[220px] sm:min-w-[280px]">
+                <textarea
+                  ref={editInputRef}
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
+                  rows={2}
+                  className="w-full p-2 text-sm rounded-lg border border-teal-500 bg-white dark:bg-[#111b21] text-gray-900 dark:text-gray-100 focus:outline-none resize-none shadow-xs"
+                />
+                <div className="flex items-center justify-between mt-1.5 select-none">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Esc to cancel • Enter to save
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="px-2 py-0.5 rounded text-xs text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      disabled={!editContent.trim()}
+                      className="px-2 py-0.5 rounded text-xs font-medium bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
+              /* Standard Message Text */
               <div className="break-words whitespace-pre-wrap leading-relaxed select-text">
                 {message.content}
+              </div>
+            )}
+
+            {/* Inline Delete Confirmation Banner */}
+            {showDeleteConfirm && (
+              <div className="mt-2 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs">
+                <p className="text-rose-800 dark:text-rose-200 font-medium">
+                  Delete this message?
+                </p>
+                <div className="flex items-center justify-end gap-1.5 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-2 py-0.5 rounded text-[11px] text-gray-600 dark:text-gray-400 hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             )}
 
@@ -133,7 +253,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
           </div>
 
           {/* Reaction Pills Bar (if reactions present) */}
-          {message.reactions && message.reactions.length > 0 && (
+          {message.reactions && message.reactions.length > 0 && !message.isDeleted && (
             <div className="flex flex-wrap items-center gap-1 px-3 pb-2 -mt-0.5">
               {message.reactions.map(reaction => {
                 const hasReacted = reaction.userIds.includes(currentUserId);
@@ -157,19 +277,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
             </div>
           )}
 
-          {/* Quick Reply Button on Hover */}
-          {!message.isDeleted && onReply && (
-            <button
-              type="button"
-              onClick={() => onReply(message)}
-              title="Reply to message"
+          {/* Floating Actions Toolbar on Hover */}
+          {!message.isDeleted && !isEditing && (
+            <div
               className={cn(
-                'absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full bg-white dark:bg-[#202c33] shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-teal-600 dark:hover:text-teal-400',
-                isMe ? '-left-8' : '-right-8'
+                'absolute -top-3.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-20',
+                isMe ? 'right-2' : 'left-2'
               )}
             >
-              <CornerUpLeft className="w-3.5 h-3.5" />
-            </button>
+              <MessageActionsToolbar
+                isMe={isMe}
+                isDeleted={message.isDeleted}
+                onReaction={emoji => onReactionClick?.(message.id, emoji)}
+                onReply={() => onReply?.(message)}
+                onCopy={handleCopy}
+                onEdit={isMe ? handleStartEdit : undefined}
+                onDelete={isMe ? () => setShowDeleteConfirm(true) : undefined}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -178,3 +303,5 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(
 );
 
 MessageBubble.displayName = 'MessageBubble';
+
+export default MessageBubble;

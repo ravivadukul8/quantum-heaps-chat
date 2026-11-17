@@ -113,3 +113,16 @@ export function formatLastSeen(isoString?: string): string {
 
   return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
 }
+
+/**
+ * Formats a date into a clean human readable string (e.g. "Nov 16, 2026").
+ */
+export function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
