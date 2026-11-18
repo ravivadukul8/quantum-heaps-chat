@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Source control & editor
+.git/
+.github/
+.vscode/
+.idea/
+
+# Local build artifacts & caches
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Env files
+.env*.local

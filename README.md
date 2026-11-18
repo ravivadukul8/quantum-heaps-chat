@@ -20,7 +20,10 @@
 - [5. Project Folder Structure](#5-project-folder-structure)
 - [6. Installation Instructions](#6-installation-instructions)
 - [7. Development Commands](#7-development-commands)
-- [8. Build Instructions](#8-build-instructions)
+- [8. Build & Deployment Instructions](#8-build--deployment-instructions)
+  - [Build Production Bundle](#build-production-bundle)
+  - [Preview Locally](#preview-locally)
+  - [Deploy to Vercel](#deploy-to-vercel)
 - [9. Testing Instructions](#9-testing-instructions)
 - [10. Redux Toolkit Architecture](#10-redux-toolkit-architecture)
 - [11. TypeScript Domain Model](#11-typescript-domain-model)
@@ -435,7 +438,9 @@ npm run dev
 
 ---
 
-## 8. Build Instructions
+## 8. Build & Deployment Instructions
+
+### Build Production Bundle
 
 Execute strict TypeScript compilation followed by Vite asset bundling:
 
@@ -448,12 +453,51 @@ The compiled, minified production assets are generated in the `dist/` directory:
 - `dist/assets/*.js`: Code-split JavaScript bundles.
 - `dist/assets/*.css`: Purged and minified Tailwind utility classes.
 
-### Preview Production Build Locally
+### Preview Locally
 Verify the production build using Vite's built-in preview server:
 
 ```bash
 npm run preview
 ```
+
+### Deploy to Vercel
+
+The application is pre-configured for zero-friction deployment to [Vercel](https://vercel.com/) via [`vercel.json`](file:///./vercel.json) and [`.vercelignore`](file:///./.vercelignore).
+
+#### Method 1: Git Integration (Recommended)
+1. Push your code to your GitHub/GitLab/Bitbucket repository.
+2. Sign in to [Vercel](https://vercel.com/) and navigate to **Add New...** > **Project**.
+3. Import your repository from Git.
+4. Vercel automatically detects the **Vite** framework preset:
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `./`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
+5. Click **Deploy**. Vercel will build the application, serve it on global edge CDN, and generate automatic preview URLs for pull requests.
+
+#### Method 2: Vercel CLI (Local Terminal)
+You can deploy directly from your local terminal using the Vercel CLI:
+
+1. Install Vercel CLI globally (or use via `npx`):
+   ```bash
+   npm install -g vercel
+   ```
+2. Log in and deploy a preview build:
+   ```bash
+   npm run deploy
+   # or: vercel
+   ```
+3. Deploy directly to production:
+   ```bash
+   npm run deploy:prod
+   # or: vercel --prod
+   ```
+
+#### Included Vercel Configuration (`vercel.json`)
+- **SPA Rewrites**: Automatically routes all incoming URLs (`/(.*)`) to `/index.html` to prevent 404 errors on deep linking or browser refreshes.
+- **Cache Optimization**: Sets 1-year immutable caching (`max-age=31536000, immutable`) for hashed Vite assets in `/assets/*`.
+- **Security Headers**: Includes `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, and `Referrer-Policy: strict-origin-when-cross-origin`.
 
 ---
 
